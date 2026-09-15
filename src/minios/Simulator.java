@@ -38,7 +38,8 @@ public class Simulator {
 
     }
 
-    public static void main(String[] args) throws Exception{
+    private static class RunFCFS {
+        static void main(String[] args) throws Exception{
             List<Process> workload = TraceParser.parseWorkload("workload.txt");
 
             SchedulingAlgo algo = new FCFS();
@@ -46,8 +47,19 @@ public class Simulator {
             Simulator sim = new Simulator(kernel, workload);
 
             sim.run();
+        }
+    }
 
+    private static class RunSJF {
+        static void main(String[] args) throws Exception{
+            List<Process> workload = TraceParser.parseWorkload("workload.txt");
 
+            SchedulingAlgo algo = new SJF();
+            Kernel kernel = new Kernel(algo);
+            Simulator sim = new Simulator(kernel, workload);
+
+            sim.run();
+        }
     }
 
 }
