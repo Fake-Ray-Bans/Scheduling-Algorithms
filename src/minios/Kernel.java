@@ -3,15 +3,20 @@ package minios;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 public class Kernel {
     private final SchedulingAlgo algo;
     private final List<Process> readyQueue = new ArrayList<>();
     private final List<Process> waitQueue = new ArrayList<>();
     private Process runningProcess = null;
+    private BiConsumer<List<Process>, Process> updateRR = null;
 
     public Kernel(SchedulingAlgo algo) {
         this.algo = algo;
+        if (algo instanceof RR rr) {
+            updateRR = rr::onProcessTick;
+        }
     }
 
     public void admitProcess(Process p, int currentTime) {
@@ -29,7 +34,7 @@ public class Kernel {
         // (One clock tick is one CPU cycle)
         while (!cpuCycleUsed) {
             // No process currently running
-            if (runningProcess == null) {
+            if (runningProcess == null || runningProcess.getState() == Process.State.SWITCH) {
                 if (dispatchNextProcess(currentTime) == null){
                     // No more process to schedule; simulation finishes.
                     break;
@@ -65,6 +70,7 @@ public class Kernel {
             else if(inst.remainingTicks > 0){
                 inst.remainingTicks--;
                 cpuCycleUsed = true;
+                updateRR.accept(readyQueue, runningProcess);
                 if (inst.remainingTicks == 0) {
                     // The instruction now finishes; load the next
                     // instruction.

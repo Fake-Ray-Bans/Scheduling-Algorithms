@@ -1,9 +1,15 @@
 package minios;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class SJF implements SchedulingAlgo {
+
+    //TODO: get int via choose time and arrival time/last choose time
+
+    HashMap<Process, Integer> lastBurstTime = new HashMap<>();
+
     @Override
     public void addProcess(List<Process> readyQueue, Process p) {
         // FCFS means appending to end of the queue

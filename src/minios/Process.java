@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Process {
-    public enum State { NEW, READY, RUNNING, BLOCKED, TERMINATED }
+    public enum State { NEW, READY, RUNNING, BLOCKED, TERMINATED, SWITCH}
 
     public final int pid;
     public final int arrivalTime;
@@ -51,6 +51,12 @@ public class Process {
         // Simple predict as previous time TODO: change later to better prediction model
         this.nextPredictedBurst = currentTime - this.burstStartTime;
         System.out.println("Process " + this.pid + " predicted burst: " + this.nextPredictedBurst);
+        System.out.println(this.programCounter);
+    }
+
+    // Process has outlived its time quant, should select the next process.
+    public void switchProcess() {
+        this.state = State.SWITCH;
     }
 
     public int getNextPredictedBurst() {

@@ -62,4 +62,16 @@ public class Simulator {
         }
     }
 
+    private static class RunRR {
+        static void main(String[] args) throws Exception{
+            List<Process> workload = TraceParser.parseWorkload("workload.txt");
+
+            SchedulingAlgo algo = new RR();
+            Kernel kernel = new Kernel(algo);
+            Simulator sim = new Simulator(kernel, workload);
+
+            sim.run();
+        }
+    }
+
 }
