@@ -21,7 +21,10 @@ public class RR implements SchedulingAlgo {
         // Fix edge case where IO wait is not entered until next time
         // Process is running
         Instruction inst = p.getCurrentInstruction();
-        if (inst == null || inst.remainingTicks <= 0) return;
+        if (inst == null || inst.remainingTicks <= 0) {
+            processDurations.put(p, 0);
+            return;
+        }
 
         // If enough cpu cycles have done to reach time quant, set the process to switch out and add to the back of the queue
         if (processDurations.get(p) >= TIME_QUANT) {
