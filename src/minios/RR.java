@@ -4,7 +4,7 @@ import java.util.*;
 
 public class RR implements SchedulingAlgo {
 
-    private final int TIME_QUANT = 2;
+    private static final int TIME_QUANT = 2;
     private final HashMap<Process, Integer> processDurations = new HashMap<>();
 
     @Override
@@ -36,9 +36,7 @@ public class RR implements SchedulingAlgo {
             return null;
         }
 
-        Process p = readyQueue.removeFirst();
-        System.out.println("Chosen " + p.pid + " with state " + p.state);
-
-        return p;
+        // Queue should be ordered how we want it
+        return readyQueue.removeFirst();
     }
 }
