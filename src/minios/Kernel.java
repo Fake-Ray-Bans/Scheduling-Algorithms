@@ -10,17 +10,13 @@ public class Kernel {
     private final List<Process> readyQueue = new ArrayList<>();
     private final List<Process> waitQueue = new ArrayList<>();
     private Process runningProcess = null;
-    private BiConsumer<List<Process>, Process> updateRR = null;
 
     public Kernel(SchedulingAlgo algo) {
         this.algo = algo;
-        if (algo instanceof RR rr) {
-            updateRR = rr::onProcessTick;
-        }
     }
 
     public void admitProcess(Process p, int currentTime) {
-        p.setReady(currentTime);
+        p.state = Process.State.READY;
         algo.addProcess(readyQueue, p);
     }
 
@@ -34,7 +30,7 @@ public class Kernel {
         // (One clock tick is one CPU cycle)
         while (!cpuCycleUsed) {
             // No process currently running
-            if (runningProcess == null || runningProcess.getState() == Process.State.SWITCH) {
+            if (runningProcess == null || runningProcess.state == Process.State.SWITCH) {
                 if (dispatchNextProcess(currentTime) == null){
                     // No more process to schedule; simulation finishes.
                     break;
@@ -46,7 +42,7 @@ public class Kernel {
             // Current process has finished.
             if (inst == null) {
                 System.out.println("[Tick " + currentTime + "] Process " + runningProcess.pid + " Terminates.");
-                terminateProcess(runningProcess, currentTime);
+                terminateProcess(runningProcess);
                 // In this case, no instruction is executed, so no CPU cycle
                 // is used. Can't advance the simulation clock. Loop
                 // back and grab the next process to execute.
@@ -57,7 +53,7 @@ public class Kernel {
             // (Assume this transition itself doesn't consume CPU cycles.)
             else if (inst.type != Instruction.OpType.CPU) {
                 System.out.println("[Tick " + currentTime + "] Process " + runningProcess.pid + " enters I/O wait.");
-                runningProcess.setBlocked(currentTime);
+                runningProcess.state = Process.State.BLOCKED;
                 waitQueue.add(runningProcess);
                 runningProcess = null;
                 // Can't advance the simulation clock. Loop back
@@ -70,7 +66,7 @@ public class Kernel {
             else if(inst.remainingTicks > 0){
                 inst.remainingTicks--;
                 cpuCycleUsed = true;
-                updateRR.accept(readyQueue, runningProcess);
+                this.algo.onProcessTick(readyQueue, runningProcess);
                 if (inst.remainingTicks == 0) {
                     // The instruction now finishes; load the next
                     // instruction.
@@ -102,7 +98,7 @@ public class Kernel {
                     // load the next instruction.
                     System.out.println("[Tick " + currentTime + "] Process " + p.pid + " I/O completes.");
                     p.programCounter++;
-                    p.setReady(currentTime);
+                    p.state = Process.State.READY;
                     // Move the process to Ready Queue
                     algo.addProcess(readyQueue, p);
                     it.remove();
@@ -111,8 +107,8 @@ public class Kernel {
         }
     }
 
-    private void terminateProcess(Process p, int currentTime) {
-        p.terminate(currentTime);
+    private void terminateProcess(Process p) {
+        p.state = Process.State.TERMINATED;
         runningProcess = null;
     }
 
@@ -120,7 +116,7 @@ public class Kernel {
         runningProcess = algo.selectNextProcess(readyQueue);
         if (runningProcess != null) {
             System.out.println("[Tick " + currentTime + "] Process " + runningProcess.pid + " executes.");
-            runningProcess.setRunning(currentTime);
+            runningProcess.state = Process.State.RUNNING;
             return runningProcess;
         }else{
             return null;

@@ -6,14 +6,21 @@ import java.util.List;
 
 public class SJF implements SchedulingAlgo {
 
-    //TODO: get int via choose time and arrival time/last choose time
-
-    HashMap<Process, Integer> lastBurstTime = new HashMap<>();
+    private Process runningProcess = null;
+    private final HashMap<Process, Integer> processDurations = new HashMap<>();
+    private final HashMap<Process, Integer> predictedBursts = new HashMap<>();
 
     @Override
     public void addProcess(List<Process> readyQueue, Process p) {
-        // FCFS means appending to end of the queue
         readyQueue.add(p);
+
+        // Start off with reasonable value
+        predictedBursts.putIfAbsent(p, 2);
+    }
+
+    @Override
+    public void onProcessTick(List<Process> readyQueue, Process p) {
+        processDurations.put(p, processDurations.getOrDefault(p, 0) + 1);
     }
 
     @Override
@@ -22,23 +29,25 @@ public class SJF implements SchedulingAlgo {
             return null;
         }
 
+        // Set predicted next burst to the previous burst and reset duration back to 0
+        if (this.runningProcess != null) {
+            this.predictedBursts.put(this.runningProcess, this.processDurations.get(this.runningProcess));
+            this.processDurations.put(this.runningProcess, 0);
+            System.out.println("Process " + this.runningProcess.pid + " next burst prediction: " + this.predictedBursts.get(this.runningProcess));
+        }
+
+
         // Find the process with the shortest burst time
         int shortestIndex = 0;
 
-        System.out.println();
-        System.out.println("Choosing Next process, Burst Lengths:");
-        System.out.println("Process " + readyQueue.getFirst().pid + ": " + readyQueue.getFirst().getNextPredictedBurst());
-
         for (int i = 1; i < readyQueue.size(); i++) {
-            System.out.println("Process " + readyQueue.get(i).pid + ": " + readyQueue.get(i).getNextPredictedBurst());
-            if (readyQueue.get(i).getNextPredictedBurst() < readyQueue.get(shortestIndex).getNextPredictedBurst()) {
+            if (this.predictedBursts.get(readyQueue.get(i)) < this.predictedBursts.get(readyQueue.get(shortestIndex))) {
                 shortestIndex = i;
             }
         }
 
-        System.out.println();
-
         // Return shortest job
-        return readyQueue.remove(shortestIndex);
+        this.runningProcess = readyQueue.remove(shortestIndex);
+        return this.runningProcess;
     }
 }

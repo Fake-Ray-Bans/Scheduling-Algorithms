@@ -10,6 +10,9 @@ public class FCFS implements SchedulingAlgo {
     }
 
     @Override
+    public void onProcessTick(List<Process> readyQueue, Process p) {}
+
+    @Override
     public Process selectNextProcess(List<Process> readyQueue) {
         if (readyQueue.isEmpty()) {
             return null;

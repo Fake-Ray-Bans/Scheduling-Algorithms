@@ -9,14 +9,7 @@ public class Process {
     public final int pid;
     public final int arrivalTime;
 
-    private int burstStartTime = 0;
-
-    // Start off with a low default value
-    // Gather data about how fast other processes will be
-    // To make the next best prediction
-    private int nextPredictedBurst = 2;
-
-    private State state = State.NEW;
+    public State state = State.NEW;
     public final List<Instruction> code;
     public int programCounter = 0;
 
@@ -24,43 +17,6 @@ public class Process {
         this.pid = pid;
         this.arrivalTime = arrivalTime;
         this.code = new ArrayList<>(code);
-    }
-
-    public State getState() {
-        return this.state;
-    }
-
-    public void terminate(int endTime) {
-        this.state = State.TERMINATED;
-    }
-
-    // Ready to run instructions
-    public void setReady(int currentTime) {
-        this.state = State.READY;
-    }
-
-    // CPU is running instructions
-    public void setRunning(int currentTime) {
-        this.state = State.RUNNING;
-        this.burstStartTime = currentTime;
-    }
-
-    // Waiting on IO
-    public void setBlocked(int currentTime) {
-        this.state = State.BLOCKED;
-        // Simple predict as previous time TODO: change later to better prediction model
-        this.nextPredictedBurst = currentTime - this.burstStartTime;
-        System.out.println("Process " + this.pid + " predicted burst: " + this.nextPredictedBurst);
-        System.out.println(this.programCounter);
-    }
-
-    // Process has outlived its time quant, should select the next process.
-    public void switchProcess() {
-        this.state = State.SWITCH;
-    }
-
-    public int getNextPredictedBurst() {
-        return this.nextPredictedBurst;
     }
 
     public Instruction getCurrentInstruction() {
