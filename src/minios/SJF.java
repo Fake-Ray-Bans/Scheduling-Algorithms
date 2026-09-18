@@ -6,7 +6,7 @@ import java.util.List;
 public class SJF implements SchedulingAlgo {
 
     private Process runningProcess = null;
-    private final HashMap<Process, Integer> processDurations = new HashMap<>();
+    private final HashMap<Process, Integer> burstTimes = new HashMap<>();
     private final HashMap<Process, Integer> predictedBursts = new HashMap<>();
 
     @Override
@@ -19,7 +19,11 @@ public class SJF implements SchedulingAlgo {
 
     @Override
     public void onProcessTick(List<Process> readyQueue, Process p) {
-        processDurations.put(p, processDurations.getOrDefault(p, 0) + 1);
+        // Prevent IO from adding to process CPU duration
+        Instruction inst = p.getCurrentInstruction();
+        if (inst != null && inst.type == Instruction.OpType.CPU) {
+            burstTimes.put(p, burstTimes.getOrDefault(p, 0) + 1);
+        }
     }
 
     @Override
@@ -30,8 +34,16 @@ public class SJF implements SchedulingAlgo {
 
         // Set predicted next burst to the previous burst and reset duration back to 0
         if (this.runningProcess != null) {
-            this.predictedBursts.put(this.runningProcess, this.processDurations.get(this.runningProcess));
-            this.processDurations.put(this.runningProcess, 0);
+            int actualBurst = this.burstTimes.get(this.runningProcess);
+            int previousPrediction =this.predictedBursts.getOrDefault(this.runningProcess, 0);
+            if (previousPrediction == 0) {
+                this.predictedBursts.put(this.runningProcess, actualBurst);
+            } else {
+                float prediction = 0.5f * (float)actualBurst + (0.5f) * (float)previousPrediction;
+                this.predictedBursts.put(this.runningProcess, (int)prediction);
+
+            }
+            this.burstTimes.put(this.runningProcess, 0);
             System.out.println("Process " + this.runningProcess.pid + " next burst prediction: " + this.predictedBursts.get(this.runningProcess));
         }
 
