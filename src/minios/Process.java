@@ -58,6 +58,7 @@ public class Process {
         if (this.state == State.TERMINATED)
             throw new RuntimeException("Process is terminated!");
 
+        this.waitingTime += currentTime - this.readyTime;
         this.state = State.RUNNING;
 
         System.out.println("[Tick " + currentTime + "] Process " + pid + " executes. Waited for " + this.waitingTime + " Tick(s).");
