@@ -23,7 +23,6 @@ public class Simulator {
             while (it.hasNext()) {
                 Process p = it.next();
                 if (p.arrivalTime == clock) {
-                    System.out.println("[Tick " + clock + "] Process " + p.pid + " arrives.");
                     kernel.admitProcess(p, clock);
                     it.remove();
                 }
@@ -36,6 +35,10 @@ public class Simulator {
             clock++;
         }
 
+        // Kernel is now finished, so we can use the total processes and total waiting time to calculate the average waiting time
+        System.out.println("Total Waiting Time: " + this.kernel.totalWaitingTime);
+        int avgWaitingTime = this.kernel.totalWaitingTime / this.kernel.totalProcesses;
+        System.out.println("Average Waiting Time per Process: " + avgWaitingTime);
     }
 
     private static class RunFCFS {

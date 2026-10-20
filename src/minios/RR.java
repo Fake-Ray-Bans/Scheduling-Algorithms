@@ -31,7 +31,7 @@ public class RR implements SchedulingAlgo {
             processDurations.put(p, 0);
 
             // Tell the kernel to remove the process from the CPU
-            p.state = Process.State.SWITCH;
+            p.setState(Process.State.SWITCH, 0);
 
             System.out.println("Process " + p.pid + " swapped out");
 
