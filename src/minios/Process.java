@@ -12,6 +12,12 @@ public class Process {
     private int readyTime = 0;
     private int waitingTime = 0;
 
+    public int size;
+    // For contiguous allocation
+    public int baseAddress;
+    // For paged allocation
+    public int[] pageTable;
+
     private State state = State.NEW;
     public final List<Instruction> code;
     public int programCounter = 0;
@@ -26,35 +32,66 @@ public class Process {
 
     public State getState() { return this.state; }
 
-    public void setState(State state, int currentTime) {
-        // If new state is the same as old, do nothing
-        if (this.state == state) return;
+    public void setProcessArrived(int currentTime) {
+        if (this.state != State.NEW)
+            throw new RuntimeException("Process has already arrived!");
 
-        switch (state) {
-            case State.READY:
-                this.readyTime = currentTime;
-                if (this.state == State.BLOCKED) {
-                    System.out.println("[Tick " + currentTime + "] Process " + pid + " I/O completes. Waiting to execute.");
-                    break;
-                }
-                System.out.println("[Tick " + currentTime + "] Process " + pid + " arrives. Waiting to execute.");
-                break;
-            case State.RUNNING:
-                this.waitingTime += currentTime - this.readyTime;
-                System.out.println("[Tick " + currentTime + "] Process " + pid + " executes. Waited for " + this.waitingTime + " Tick(s).");
-                break;
-            case State.TERMINATED:
-                System.out.println("[Tick " + currentTime + "] Process " + pid + " Terminates. Total wait: " + this.waitingTime + " Tick(s).");
-                break;
-            case State.BLOCKED:
-                System.out.println("[Tick " + currentTime + "] Process " + pid + " enters I/O wait.");
-                break;
-            case State.SWITCH:
-                System.out.println("[Tick " + currentTime + "] Process " + pid + " set to switch out.");
-                break;
-        }
+        this.readyTime = currentTime;
+        this.state = State.READY;
 
-        this.state = state;
+        System.out.println("[Tick " + currentTime + "] Process " + pid + " arrives. Waiting to execute.");
+    }
+
+    public void setProcessIOComplete(int currentTime) {
+        if (this.state != State.BLOCKED)
+            throw new RuntimeException("Process is not in IO!");
+
+        this.readyTime = currentTime;
+        this.state = State.READY;
+
+        System.out.println("[Tick " + currentTime + "] Process " + pid + " I/O completes. Waiting to execute.");
+    }
+
+    public void setProcessRunning(int currentTime) {
+        if (this.state == State.RUNNING)
+            throw new RuntimeException("Process is already running!");
+        if (this.state == State.TERMINATED)
+            throw new RuntimeException("Process is terminated!");
+
+        this.state = State.RUNNING;
+
+        System.out.println("[Tick " + currentTime + "] Process " + pid + " executes. Waited for " + this.waitingTime + " Tick(s).");
+    }
+
+    public void setProcessTerminated(int currentTime) {
+        if (this.state == State.TERMINATED)
+            throw new RuntimeException("Process is already terminated!");
+
+        this.state = State.TERMINATED;
+
+        System.out.println("[Tick " + currentTime + "] Process " + pid + " Terminates. Total wait: " + this.waitingTime + " Tick(s).");
+    }
+
+    public void setProcessBlocked(int currentTime) {
+        if (this.state == State.BLOCKED)
+            throw new RuntimeException("Process is already blocked!");
+        if (this.state == State.TERMINATED)
+            throw new RuntimeException("Process is terminated!");
+
+        this.state = State.BLOCKED;
+
+        System.out.println("[Tick " + currentTime + "] Process " + pid + " enters I/O wait.");
+    }
+
+    public void setProcessToSwitch() {
+        if (this.state == State.SWITCH)
+            throw new RuntimeException("Process is already ready to switch out!");
+        if (this.state == State.TERMINATED)
+            throw new RuntimeException("Process is terminated!");
+
+        this.state = State.SWITCH;
+
+        System.out.println("Process " + pid + " set to switch out.");
     }
 
     public Instruction getCurrentInstruction() {

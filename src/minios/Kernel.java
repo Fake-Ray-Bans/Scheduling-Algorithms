@@ -19,7 +19,7 @@ public class Kernel {
     }
 
     public void admitProcess(Process p, int currentTime) {
-        p.setState(Process.State.READY, currentTime);
+        p.setProcessArrived(currentTime);
         algo.addProcess(readyQueue, p);
     }
 
@@ -54,7 +54,7 @@ public class Kernel {
             // I/O instruction: process enters I/O and no longer uses CPU
             // (Assume this transition itself doesn't consume CPU cycles.)
             else if (inst.type != Instruction.OpType.CPU) {
-                runningProcess.setState(Process.State.BLOCKED, currentTime);
+                runningProcess.setProcessBlocked(currentTime);
                 waitQueue.add(runningProcess);
                 runningProcess = null;
                 // Can't advance the simulation clock. Loop back
@@ -98,7 +98,7 @@ public class Kernel {
                     // The I/O wait has completed;
                     // load the next instruction.
                     p.programCounter++;
-                    p.setState(Process.State.READY, currentTime);
+                    p.setProcessIOComplete(currentTime);
                     // Move the process to Ready Queue
                     algo.addProcess(readyQueue, p);
                     it.remove();
@@ -108,7 +108,7 @@ public class Kernel {
     }
 
     private void terminateProcess(int currentTime) {
-        runningProcess.setState(Process.State.TERMINATED, currentTime);
+        runningProcess.setProcessTerminated(currentTime);
 
         totalProcesses++;
         totalWaitingTime += runningProcess.getWaitingTime();
@@ -119,7 +119,7 @@ public class Kernel {
     private Process dispatchNextProcess(int currentTime) {
         runningProcess = algo.selectNextProcess(readyQueue);
         if (runningProcess != null) {
-            runningProcess.setState(Process.State.RUNNING, currentTime);
+            runningProcess.setProcessRunning(currentTime);
             return runningProcess;
         }else{
             return null;
