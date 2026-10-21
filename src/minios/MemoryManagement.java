@@ -1,6 +1,8 @@
 package minios;
 
 public interface MemoryManagement {
-    void allocate(Process p);
-    void release(Process p);
+    // Returns true if immediately allocated
+    boolean allocate(Process p, int currentTime);
+
+    void release(Process p, int currentTime);
 }

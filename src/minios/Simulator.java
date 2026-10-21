@@ -39,14 +39,32 @@ public class Simulator {
         System.out.println("Total Waiting Time: " + this.kernel.totalWaitingTime);
         int avgWaitingTime = this.kernel.totalWaitingTime / this.kernel.totalProcesses;
         System.out.println("Average Waiting Time per Process: " + avgWaitingTime);
+
+        System.out.println("Total Memory Queue Waiting Time: " + this.kernel.totalMemoryQueueWaitingTime);
+        int avgMemoryQueueWaitingTime = this.kernel.totalMemoryQueueWaitingTime / this.kernel.totalProcesses;
+        System.out.println("Average Memory Queue Waiting Time per Process: " + avgMemoryQueueWaitingTime);
     }
 
-    private static class RunFCFS {
+    private static class RunFCFSContiguous {
         static void main(String[] args) throws Exception{
             List<Process> workload = TraceParser.parseWorkload("workload.txt");
 
             SchedulingAlgo algo = new FCFS();
-            Kernel kernel = new Kernel(algo);
+            ContiguousAllocation memory = new ContiguousAllocation(120);
+            Kernel kernel = new Kernel(algo, memory);
+            Simulator sim = new Simulator(kernel, workload);
+
+            sim.run();
+        }
+    }
+
+    private static class RunFCFSPaged {
+        static void main(String[] args) throws Exception{
+            List<Process> workload = TraceParser.parseWorkload("workload.txt");
+
+            SchedulingAlgo algo = new FCFS();
+            PagedAllocation memory = new PagedAllocation(120, 10);
+            Kernel kernel = new Kernel(algo, memory);
             Simulator sim = new Simulator(kernel, workload);
 
             sim.run();
@@ -58,7 +76,8 @@ public class Simulator {
             List<Process> workload = TraceParser.parseWorkload("workload.txt");
 
             SchedulingAlgo algo = new SJF();
-            Kernel kernel = new Kernel(algo);
+            ContiguousAllocation memory = new ContiguousAllocation(120);
+            Kernel kernel = new Kernel(algo, memory);
             Simulator sim = new Simulator(kernel, workload);
 
             sim.run();
@@ -70,7 +89,8 @@ public class Simulator {
             List<Process> workload = TraceParser.parseWorkload("workload.txt");
 
             SchedulingAlgo algo = new RR();
-            Kernel kernel = new Kernel(algo);
+            ContiguousAllocation memory = new ContiguousAllocation(120);
+            Kernel kernel = new Kernel(algo, memory);
             Simulator sim = new Simulator(kernel, workload);
 
             sim.run();

@@ -8,23 +8,25 @@ public class Process {
 
     public final int pid;
     public final int arrivalTime;
+    public final int size;
 
     private int readyTime = 0;
     private int waitingTime = 0;
+    public int memoryQueueWaitingTime = 0;
 
-    public int size;
     // For contiguous allocation
     public int baseAddress;
     // For paged allocation
-    public int[] pageTable;
+    public ArrayList<Integer> pageTable = new ArrayList<>();
 
     private State state = State.NEW;
     public final List<Instruction> code;
     public int programCounter = 0;
 
-    public Process(int pid, int arrivalTime, List<Instruction> code) {
+    public Process(int pid, int arrivalTime, int size, List<Instruction> code) {
         this.pid = pid;
         this.arrivalTime = arrivalTime;
+        this.size = size;
         this.code = new ArrayList<>(code);
     }
 
@@ -32,14 +34,14 @@ public class Process {
 
     public State getState() { return this.state; }
 
-    public void setProcessArrived(int currentTime) {
+    public void setProcessReady(int currentTime) {
         if (this.state != State.NEW)
-            throw new RuntimeException("Process has already arrived!");
+            throw new RuntimeException("Process has already been admitted, cannot be ready from new again!");
 
         this.readyTime = currentTime;
         this.state = State.READY;
 
-        System.out.println("[Tick " + currentTime + "] Process " + pid + " arrives. Waiting to execute.");
+        System.out.println("[Tick " + currentTime + "] Process " + pid + " ready. Waiting to execute.");
     }
 
     public void setProcessIOComplete(int currentTime) {

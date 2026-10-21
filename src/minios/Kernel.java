@@ -7,20 +7,31 @@ import java.util.function.BiConsumer;
 
 public class Kernel {
     private final SchedulingAlgo algo;
+    private final MemoryManagement memory;
     private final List<Process> readyQueue = new ArrayList<>();
     private final List<Process> waitQueue = new ArrayList<>();
+    private final List<Process> memoryQueue = new ArrayList<>();
     private Process runningProcess = null;
 
     public int totalProcesses = 0;
     public int totalWaitingTime = 0;
+    public int totalMemoryQueueWaitingTime = 0;
 
-    public Kernel(SchedulingAlgo algo) {
+    public Kernel(SchedulingAlgo algo, MemoryManagement memory) {
         this.algo = algo;
+        this.memory = memory;
     }
 
     public void admitProcess(Process p, int currentTime) {
-        p.setProcessArrived(currentTime);
-        algo.addProcess(readyQueue, p);
+        System.out.println("[Tick " + currentTime + "] Process " + p.pid + " arrives with size " + p.size + ".");
+
+        // Attempt to allocate process, if it can't be allocated add it to the memory queue
+        if (this.memory.allocate(p, currentTime)) {
+            p.setProcessReady(currentTime);
+            algo.addProcess(readyQueue, p);
+        } else {
+            this.memoryQueue.add(p);
+        }
     }
 
     // Called on every clock tick
@@ -108,12 +119,24 @@ public class Kernel {
     }
 
     private void terminateProcess(int currentTime) {
-        runningProcess.setProcessTerminated(currentTime);
+        // Release current process and search for other processes that can be added
+        this.memory.release(this.runningProcess, currentTime);
+        this.memoryQueue.removeIf(p -> {
+            if (this.memory.allocate(p, currentTime)) {
+                p.setProcessReady(currentTime);
+                this.algo.addProcess(this.readyQueue, p);
+                return true;
+            }
+            return false;
+        });
 
-        totalProcesses++;
-        totalWaitingTime += runningProcess.getWaitingTime();
+        this.runningProcess.setProcessTerminated(currentTime);
 
-        runningProcess = null;
+        this.totalProcesses++;
+        this.totalWaitingTime += this.runningProcess.getWaitingTime();
+        this.totalMemoryQueueWaitingTime += this.runningProcess.memoryQueueWaitingTime;
+
+        this.runningProcess = null;
     }
 
     private Process dispatchNextProcess(int currentTime) {
