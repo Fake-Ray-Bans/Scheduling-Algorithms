@@ -18,7 +18,6 @@ public class Simulator {
         // 1. there are more processes to come; or
         // 2. one or more existing processes have not completed yet
         while (!incomingProcesses.isEmpty() || !kernel.isIdle()) {
-            // Step 1: Check if any processes should arrive now
             Iterator<Process> it = incomingProcesses.iterator();
             while (it.hasNext()) {
                 Process p = it.next();
@@ -27,11 +26,7 @@ public class Simulator {
                     it.remove();
                 }
             }
-
-            // Step 2: perform tasks that need to happen during this clock tick
             kernel.onClockTick(clock);
-
-            // Step 3: Advance the simulation clock
             clock++;
         }
 
@@ -85,7 +80,7 @@ public class Simulator {
     }
 
     private static class RunRR {
-        static void main(String[] args) throws Exception{
+        public static void main(String[] args) throws Exception{
             List<Process> workload = TraceParser.parseWorkload("workload.txt");
 
             SchedulingAlgo algo = new RR();

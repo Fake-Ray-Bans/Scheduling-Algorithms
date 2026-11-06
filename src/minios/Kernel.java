@@ -1,16 +1,19 @@
+
 package minios;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.BiConsumer;
 
 public class Kernel {
+
     private final SchedulingAlgo algo;
     private final MemoryManagement memory;
+
     private final List<Process> readyQueue = new ArrayList<>();
     private final List<Process> waitQueue = new ArrayList<>();
     private final List<Process> memoryQueue = new ArrayList<>();
+
     private Process runningProcess = null;
 
     public int totalProcesses = 0;
@@ -23,95 +26,189 @@ public class Kernel {
     }
 
     public void admitProcess(Process p, int currentTime) {
-        System.out.println("[Tick " + currentTime + "] Process " + p.pid + " arrives with size " + p.size + ".");
 
-        // Attempt to allocate process, if it can't be allocated add it to the memory queue
-        if (this.memory.allocate(p, currentTime)) {
+        System.out.println("[Tick " + currentTime +
+                "] Process " + p.pid +
+                " arrives with size " + p.size + ".");
+
+        if (memory.allocate(p, currentTime)) {
             p.setProcessReady(currentTime);
             algo.addProcess(readyQueue, p);
         } else {
-            this.memoryQueue.add(p);
+            memoryQueue.add(p);
         }
     }
 
-    // Called on every clock tick
     public void onClockTick(int currentTime) {
-        // check all processes currently waiting in I/O wait queue
+
         serviceWaitQueue(currentTime);
 
         boolean cpuCycleUsed = false;
-        // Execute one CPU cycle
-        // (One clock tick is one CPU cycle)
+
         while (!cpuCycleUsed) {
-            // No process currently running
-            if (runningProcess == null || runningProcess.getState() == Process.State.SWITCH) {
-                if (dispatchNextProcess(currentTime) == null){
-                    // No more process to schedule; simulation finishes.
+
+            if (runningProcess == null ||
+                    runningProcess.getState() == Process.State.SWITCH) {
+
+                if (dispatchNextProcess(currentTime) == null) {
                     break;
                 }
             }
 
-            Instruction inst = runningProcess.getCurrentInstruction();
+            Instruction inst =
+                    runningProcess.getCurrentInstruction();
 
-            // Current process has finished.
             if (inst == null) {
                 terminateProcess(currentTime);
-                // In this case, no instruction is executed, so no CPU cycle
-                // is used. Can't advance the simulation clock. Loop
-                // back and grab the next process to execute.
                 continue;
             }
 
-            // I/O instruction: process enters I/O and no longer uses CPU
-            // (Assume this transition itself doesn't consume CPU cycles.)
-            else if (inst.type != Instruction.OpType.CPU) {
+            if (inst.type == Instruction.OpType.IO) {
+
+                System.out.println("[Tick " + currentTime +
+                        "] Process " + runningProcess.pid +
+                        " executes IO for " + inst.duration +
+                        " tick(s).");
+
                 runningProcess.setProcessBlocked(currentTime);
                 waitQueue.add(runningProcess);
                 runningProcess = null;
-                // Can't advance the simulation clock. Loop back
-                // and grab the next process to execute.
+
                 continue;
             }
 
-            // CPU instruction: the instruction has not finished;
-            // Utilize one CPU cycle
-            else if(inst.remainingTicks > 0){
-                inst.remainingTicks--;
-                cpuCycleUsed = true;
-                this.algo.onProcessTick(readyQueue, runningProcess);
-                if (inst.remainingTicks == 0) {
-                    // The instruction now finishes; load the next
-                    // instruction.
+            if (inst.type == Instruction.OpType.COMPUTE) {
+
+                if (inst.remainingTicks > 0) {
+
+                    System.out.println("[Tick " + currentTime +
+                            "] Process " + runningProcess.pid +
+                            " executes COMPUTE. Remaining ticks: " +
+                            (inst.remainingTicks - 1));
+
+                    inst.remainingTicks--;
+
+                    cpuCycleUsed = true;
+
+                    algo.onProcessTick(readyQueue, runningProcess, currentTime);
+
+                    if (inst.remainingTicks == 0) {
+                        runningProcess.programCounter++;
+                    }
+                } else {
                     runningProcess.programCounter++;
                 }
+
+                continue;
             }
 
-            // CPU instruction: the instruction has finished
-            // (should never come here as this is already handled above,
-            // but just in case...)
-            else{
+            if (inst.type == Instruction.OpType.STORE) {
+
+                int pid = runningProcess.pid;
+                int virtualAddress = inst.address;
+                int value = inst.value;
+
+                int physicalAddress =
+                        memory.translate(runningProcess, virtualAddress);
+
+                inst.remainingTicks = 0;
+                cpuCycleUsed = true;
+
+                if (physicalAddress == -1) {
+
+                    System.out.println("[Tick " + currentTime +
+                            "] WARNING: Process " + pid +
+                            " attempted STORE addr " +
+                            virtualAddress + " value " + value +
+                            " - invalid virtual address. Process terminated.");
+
+                    terminateProcess(currentTime);
+                    continue;
+                }
+
+                System.out.println("[Tick " + currentTime +
+                        "] Process " + pid +
+                        ": Virtual address " + virtualAddress +
+                        " -> Physical address " + physicalAddress);
+
+                memory.writePhysical(physicalAddress, value);
+
+                System.out.println("[Tick " + currentTime +
+                        "] Process " + pid +
+                        " STORE value " + value +
+                        " at physical address " + physicalAddress);
+
                 runningProcess.programCounter++;
-                // Can't advance the simulation clock. Loop back
-                // and move to the next instruction.
+
+                algo.onProcessTick(readyQueue, runningProcess, currentTime);
+
                 continue;
+            }
+
+            if (inst.type == Instruction.OpType.LOAD) {
+
+                int pid = runningProcess.pid;
+                int virtualAddress = inst.address;
+
+                int physicalAddress =
+                        memory.translate(runningProcess, virtualAddress);
+
+                inst.remainingTicks = 0;
+                cpuCycleUsed = true;
+
+                if (physicalAddress == -1) {
+
+                    System.out.println("[Tick " + currentTime +
+                            "] WARNING: Process " + pid +
+                            " attempted LOAD addr " +
+                            virtualAddress +
+                            " - invalid virtual address. Process terminated.");
+
+                    terminateProcess(currentTime);
+                    continue;
+                }
+
+                System.out.println("[Tick " + currentTime +
+                        "] Process " + pid +
+                        ": Virtual address " + virtualAddress +
+                        " -> Physical address " + physicalAddress);
+
+                int loadedValue =
+                        memory.readPhysical(physicalAddress);
+
+                System.out.println("[Tick " + currentTime +
+                        "] Process " + pid +
+                        " LOAD value " + loadedValue +
+                        " from virtual address " + virtualAddress);
+
+                runningProcess.programCounter++;
+
+                algo.onProcessTick(readyQueue, runningProcess, currentTime);
             }
         }
     }
 
     private void serviceWaitQueue(int currentTime) {
+
         Iterator<Process> it = waitQueue.iterator();
+
         while (it.hasNext()) {
+
             Process p = it.next();
             Instruction inst = p.getCurrentInstruction();
+
             if (inst != null) {
+
                 inst.remainingTicks--;
+
                 if (inst.remainingTicks <= 0) {
-                    // The I/O wait has completed;
-                    // load the next instruction.
+
                     p.programCounter++;
+
                     p.setProcessIOComplete(currentTime);
-                    // Move the process to Ready Queue
+
                     algo.addProcess(readyQueue, p);
+
                     it.remove();
                 }
             }
@@ -119,40 +216,57 @@ public class Kernel {
     }
 
     private void terminateProcess(int currentTime) {
-        // Release current process and search for other processes that can be added
-        this.memory.release(this.runningProcess, currentTime);
-        this.memoryQueue.removeIf(p -> {
-            if (this.memory.allocate(p, currentTime)) {
+
+        Process terminated = runningProcess;
+
+        if (terminated == null) {
+            return;
+        }
+
+        memory.release(terminated, currentTime);
+
+        terminated.setProcessTerminated(currentTime);
+
+        totalProcesses++;
+        totalWaitingTime += terminated.getWaitingTime();
+        totalMemoryQueueWaitingTime +=
+                terminated.memoryQueueWaitingTime;
+
+        runningProcess = null;
+
+        memoryQueue.removeIf(p -> {
+
+            if (memory.allocate(p, currentTime)) {
+
                 p.setProcessReady(currentTime);
-                this.algo.addProcess(this.readyQueue, p);
+                algo.addProcess(readyQueue, p);
+
                 return true;
             }
+
             return false;
         });
-
-        this.runningProcess.setProcessTerminated(currentTime);
-
-        this.totalProcesses++;
-        this.totalWaitingTime += this.runningProcess.getWaitingTime();
-        this.totalMemoryQueueWaitingTime += this.runningProcess.memoryQueueWaitingTime;
-
-        this.runningProcess = null;
     }
 
     private Process dispatchNextProcess(int currentTime) {
+
         runningProcess = algo.selectNextProcess(readyQueue);
+
         if (runningProcess != null) {
+
             runningProcess.setProcessRunning(currentTime);
+
             return runningProcess;
-        }else{
-            return null;
         }
 
+        return null;
     }
 
     public boolean isIdle() {
+
         return runningProcess == null &&
                 readyQueue.isEmpty() &&
-                waitQueue.isEmpty();
+                waitQueue.isEmpty() &&
+                memoryQueue.isEmpty();
     }
 }

@@ -1,3 +1,4 @@
+
 package minios;
 
 import java.util.*;
@@ -13,38 +14,45 @@ public class RR implements SchedulingAlgo {
     }
 
     @Override
-    public void onProcessTick(List<Process> readyQueue, Process p) {
+    public void onProcessTick(List<Process> readyQueue, Process p, int currentTime) {
+
         // Increment process durations by 1
         processDurations.put(p, processDurations.getOrDefault(p, 0) + 1);
-        System.out.println("Process " + p.pid + " tick #" + processDurations.get(p));
 
-        // Fix edge case where IO wait is not entered until next time
-        // Process is running
+        System.out.println("[Tick " + currentTime + "] Process "
+                + p.pid + " tick #" + processDurations.get(p));
+
+        // Check whether the current instruction has completed
         Instruction inst = p.getCurrentInstruction();
+
         if (inst == null || inst.remainingTicks <= 0) {
             processDurations.put(p, 0);
             return;
         }
 
-        // If enough cpu cycles have done to reach time quant, set the process to switch out and add to the back of the queue
+        // Check whether the time quantum has expired
         if (processDurations.get(p) >= TIME_QUANT) {
+
             processDurations.put(p, 0);
 
             // Tell the kernel to remove the process from the CPU
             p.setProcessToSwitch();
 
-            // Add process to last in queue
-            readyQueue.addLast(p);
+            // Add process to the back of the ready queue
+            readyQueue.add(p);
+
+            System.out.println("[Tick " + currentTime + "] Process "
+                    + p.pid + " set to switch out.");
         }
     }
 
     @Override
     public Process selectNextProcess(List<Process> readyQueue) {
+
         if (readyQueue.isEmpty()) {
             return null;
         }
 
-        // Queue should be ordered how we want it
-        return readyQueue.removeFirst();
+        return readyQueue.remove(0);
     }
 }

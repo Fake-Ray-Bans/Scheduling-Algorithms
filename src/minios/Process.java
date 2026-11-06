@@ -93,8 +93,6 @@ public class Process {
             throw new RuntimeException("Process is terminated!");
 
         this.state = State.SWITCH;
-
-        System.out.println("Process " + pid + " set to switch out.");
     }
 
     public Instruction getCurrentInstruction() {
@@ -103,6 +101,19 @@ public class Process {
         }else{
             return null;
         }
+    }
+
+
+    public int currentCPUBurstLength() {
+        int length = 0;
+        for (int i = programCounter; i < code.size(); i++) {
+            Instruction inst = code.get(i);
+            if (inst.type == Instruction.OpType.IO) {
+                break;
+            }
+            length += inst.duration;
+        }
+        return length;
     }
 
 
